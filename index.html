@@ -539,8 +539,8 @@
         document.getElementById('txt-parte').innerHTML = "Todos los estudiantes de la FIUNA pueden sumarse. No importa el año, la carrera ni la experiencia previa. ¡Sumá tu voz!";
 
         try {
-            const proxyUrl = 'https://api.allorigins.win/raw?url=';
-            const res = await fetch(proxyUrl + encodeURIComponent(SCRIPT_URL));
+            // ✅ USÁ FETCH DIRECTO (como en Jerovia):
+            const res = await fetch(SCRIPT_URL);
             const d = await res.json();
             
             // Principal
