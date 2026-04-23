@@ -158,7 +158,7 @@
             transform: translateY(0);
         }
         .acc-item.open .arrow-icon { transform: rotate(180deg); }
-        /* Secretarías dentro del acordeón (mismos estilos) */
+        /* Secretarías dentro del acordeón */
         .secretaria-accordion {
             display: flex;
             flex-direction: column;
@@ -219,6 +219,9 @@
             text-decoration: none;
             text-transform: uppercase;
             letter-spacing: 0.5px;
+            border: none;
+            cursor: pointer;
+            font-family: 'Montserrat', sans-serif;
         }
         /* Botones */
         .flat-btn { 
@@ -259,7 +262,7 @@
         .slider-wrapper { position: relative; width: 100%; overflow: hidden; }
         #auth-track { display: flex; transition: transform 0.5s cubic-bezier(0.23, 1, 0.32, 1); }
         .auth-slide { 
-            min-width: 100%; height: 420px; overflow-y: auto; padding: 0 25px;
+            min-width: 100%; height: 480px; overflow-y: auto; padding: 0 25px;
             display: flex; flex-direction: column; align-items: center; scrollbar-width: thin;
         }
         .auth-img { 
@@ -399,6 +402,75 @@
         return url;
     }
 
+    // ==================== NAVEGACIÓN A PROPUESTAS ====================
+    function irAPropuestasDeCargo(cargo) {
+        const secProp = document.getElementById('sec-propuestas');
+        if (!secProp.classList.contains('active')) {
+            toggleSec('sec-propuestas');
+        }
+        setTimeout(() => {
+            const propItems = document.querySelectorAll('.prop-item');
+            let encontrado = false;
+            const cargoLower = cargo.toLowerCase();
+            for (let item of propItems) {
+                const header = item.querySelector('.prop-header span:first-child');
+                if (header) {
+                    const titulo = header.innerText.toLowerCase();
+                    if (titulo.includes(cargoLower) || cargoLower.includes(titulo.substring(0, 10))) {
+                        if (!item.classList.contains('open')) item.classList.add('open');
+                        item.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        encontrado = true;
+                        break;
+                    }
+                }
+            }
+            if (!encontrado) {
+                secProp.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }, 400);
+    }
+
+    // ==================== RENDER SLIDER CANDIDATOS ====================
+    function renderAuth() {
+        const track = document.getElementById('auth-track');
+        track.innerHTML = autoridades.map(a => {
+            const cargoEscapado = a.cargo.replace(/'/g, "\\'");
+            return `
+                <div class="auth-slide" data-id="${a.id}">
+                    <img src="${fix(a.foto)}" class="auth-img">
+                    <div class="sticky-info">
+                        <div style="font-weight:800; font-size:1rem; text-transform:uppercase;">${a.nombre}</div>
+                        <div style="font-size:0.75rem; color:var(--fpt-red); font-weight:700;">${a.cargo}</div>
+                    </div>
+                    <div style="text-align:justify; font-size:0.85rem; line-height:1.6; padding:10px 0;">${formatText(a.bio || '')}</div>
+                    <button class="sec-cand-link" style="margin-top:5px; background:var(--fpt-red);" onclick="irAPropuestasDeCargo('${cargoEscapado}')">📋 Ver propuestas</button>
+                </div>
+            `;
+        }).join('');
+        const trackEl = document.getElementById('auth-track');
+        trackEl.ontouchstart = e => startX = e.touches[0].clientX;
+        trackEl.ontouchend = e => {
+            let diff = startX - e.changedTouches[0].clientX;
+            if (Math.abs(diff) > 50) moveAuth(diff > 0 ? 1 : -1);
+        };
+    }
+
+    function moveAuth(dir) {
+        authIdx = (authIdx + dir + autoridades.length) % autoridades.length;
+        document.getElementById('auth-track').style.transform = `translateX(-${authIdx * 100}%)`;
+    }
+
+    function jumpToCandidate(id) {
+        const index = autoridades.findIndex(c => c.id == id);
+        if (index !== -1) {
+            authIdx = index;
+            document.getElementById('auth-track').style.transform = `translateX(-${authIdx * 100}%)`;
+            const secAut = document.getElementById('sec-aut');
+            if (!secAut.classList.contains('active')) toggleSec('sec-aut');
+            setTimeout(() => secAut.scrollIntoView({ behavior: 'smooth', block: 'start' }), 300);
+        }
+    }
+
     // ==================== CARGA PRINCIPAL ====================
     async function init() {
         try {
@@ -412,7 +484,7 @@
             document.getElementById('link-whatsapp').href = d.principal["link se parte"] || "#";
             document.getElementById('link-instagram').href = d.principal["link instagram"] || "#";
 
-            // Redes sociales (agregamos teléfono)
+            // Redes sociales con teléfono
             const telefono = d.principal["link logo numero"] || "";
             document.getElementById('socials').innerHTML = `
                 <a href="${d.principal["link instagram"] || '#'}" target="_blank"><img src="https://cdn-icons-png.flaticon.com/512/174/174855.png"></a>
@@ -428,15 +500,13 @@
             document.getElementById('sub-aut').innerText = d.portadaAut.desc;
             renderAuth();
 
-            // ----- ACORDEONES DINÁMICOS desde Descripciones (con caso especial para "Secretarías") -----
+            // ----- ACORDEONES DINÁMICOS desde Descripciones (caso especial "Secretarías") -----
             const contenedorAcc = document.getElementById('acordeones-dinamicos');
             if (contenedorAcc && d.informativoRaw) {
                 let htmlAcc = '';
                 for (const [titulo, contenido] of Object.entries(d.informativoRaw)) {
                     if (titulo && contenido) {
-                        // Caso especial: si el título es "Secretarías" (sin importar mayúsculas)
                         if (titulo.toLowerCase().trim() === "secretarías") {
-                            // Generar lista de secretarías desde autoridades
                             const secretarias = autoridades.filter(c => c.cargo && (c.cargo.toLowerCase().includes('secretaría') || c.cargo.toLowerCase().includes('secretaria')));
                             const secretariasHtml = secretarias.map(sec => {
                                 const textoBoton = sec.genero === "Femenino" ? "Ver candidata" : "Ver candidato";
@@ -463,7 +533,6 @@
                                 </div>
                             `;
                         } else {
-                            // Acordeón normal
                             htmlAcc += `
                                 <div class="acc-item" onclick="toggleAcc(this)">
                                     <div class="acc-header">${titulo} <span class="arrow-icon">▼</span></div>
@@ -476,7 +545,7 @@
                 contenedorAcc.innerHTML = htmlAcc || '<p style="padding:20px; text-align:center">No hay información cargada.</p>';
             }
 
-            // ----- PROPUESTAS (acordeones desde hoja Propuestas) -----
+            // ----- PROPUESTAS (acordeones) -----
             const prop = d.propuestas;
             document.getElementById('banner-prop').src = fix(prop.fotoPortada) || '';
             document.getElementById('prop-tit').innerText = prop.titulo || "Nuestras Propuestas";
@@ -515,44 +584,7 @@
         }
     }
 
-    // Render del slider de candidatos (usando SOLO la biografía de columna D)
-    function renderAuth() {
-        const track = document.getElementById('auth-track');
-        track.innerHTML = autoridades.map(a => `
-            <div class="auth-slide" data-id="${a.id}">
-                <img src="${fix(a.foto)}" class="auth-img">
-                <div class="sticky-info">
-                    <div style="font-weight:800; font-size:1rem; text-transform:uppercase;">${a.nombre}</div>
-                    <div style="font-size:0.75rem; color:var(--fpt-red); font-weight:700;">${a.cargo}</div>
-                </div>
-                <div style="text-align:justify; font-size:0.85rem; line-height:1.6; padding:10px 0;">${formatText(a.bio || '')}</div>
-            </div>
-        `).join('');
-        const trackEl = document.getElementById('auth-track');
-        trackEl.ontouchstart = e => startX = e.touches[0].clientX;
-        trackEl.ontouchend = e => {
-            let diff = startX - e.changedTouches[0].clientX;
-            if (Math.abs(diff) > 50) moveAuth(diff > 0 ? 1 : -1);
-        };
-    }
-
-    function moveAuth(dir) {
-        authIdx = (authIdx + dir + autoridades.length) % autoridades.length;
-        document.getElementById('auth-track').style.transform = `translateX(-${authIdx * 100}%)`;
-    }
-
-    function jumpToCandidate(id) {
-        const index = autoridades.findIndex(c => c.id == id);
-        if (index !== -1) {
-            authIdx = index;
-            document.getElementById('auth-track').style.transform = `translateX(-${authIdx * 100}%)`;
-            const secAut = document.getElementById('sec-aut');
-            if (!secAut.classList.contains('active')) toggleSec('sec-aut');
-            setTimeout(() => secAut.scrollIntoView({ behavior: 'smooth', block: 'start' }), 300);
-        }
-    }
-
-    // Funciones UI
+    // Funciones UI auxiliares
     function toggleAcc(el) {
         const isOpen = el.classList.contains('open');
         document.querySelectorAll('.acc-item').forEach(item => item.classList.remove('open'));
@@ -588,7 +620,6 @@
         welcome.style.opacity = '0';
         setTimeout(() => {
             welcome.style.display = 'none';
-            // Si el video tiene fuente y está al menos cargado para empezar a reproducirse (readyState >= 3)
             if (v.src && v.readyState >= 3) {
                 document.getElementById('intro-screen').style.display = 'flex';
                 setTimeout(() => { document.getElementById('intro-screen').style.opacity = '1'; }, 50);
