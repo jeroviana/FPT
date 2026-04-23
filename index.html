@@ -193,7 +193,7 @@
         }
         .acc-item.open .arrow-icon { transform: rotate(180deg); }
 
-        /* --- SECRETARÍAS (con scroll) --- */
+        /* --- SECRETARÍAS (con scroll y género) --- */
         .secretaria-accordion {
             display: flex;
             flex-direction: column;
@@ -352,7 +352,7 @@
             z-index: 100;
         }
 
-        /* --- SLIDER CANDIDATOS (con scroll en biografías) --- */
+        /* --- SLIDER CANDIDATOS (con scroll) --- */
         .slider-wrapper { position: relative; width: 100%; overflow: hidden; }
         #auth-track { display: flex; transition: transform 0.5s cubic-bezier(0.23, 1, 0.32, 1); }
         .auth-slide { 
@@ -398,7 +398,7 @@
         .nav-arrow.left { left: 5px; }
         .nav-arrow.right { right: 5px; }
 
-        /* --- PROPUESTAS (acordeones con scroll) --- */
+        /* --- PROPUESTAS (acordeones dinámicos) --- */
         .prop-lista {
             padding: 0 20px;
         }
@@ -517,12 +517,11 @@
 <div id="lightbox" onclick="this.style.display='none'"><img id="lb-img" src=""></div>
 
 <script>
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbypS1dZ7ol8RcoWVDhPZG9QsqORcy5hdZfK533J5sw5e2iKDWOxwRIda4BAsCZBsmyyyQ/exec"; // 👈 Reemplaza con tu URL real
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbypS1dZ7ol8RcoWVDhPZG9QsqORcy5hdZfK533J5sw5e2iKDWOxwRIda4BAsCZBsmyyyQ/exec"; // 👈 REEMPLAZA CON TU URL REAL
     let autoridades = [];
     let authIdx = 0;
     let startX = 0;
 
-    // Convierte puntos seguidos de espacio y dobles espacios en saltos de párrafo
     function formatText(text) {
         if (!text) return "";
         text = text.replace(/\. /g, '.<br><br>');
@@ -553,7 +552,7 @@
             document.getElementById('link-whatsapp').href = d.principal["link se parte"] || "#";
             document.getElementById('link-instagram').href = d.principal["link instagram"] || "#";
             
-            // Redes sociales (WhatsApp: si el enlace ya es completo, se usa directamente)
+            // Redes sociales
             const whatsappLink = d.principal["link se parte"] || "#";
             document.getElementById('socials').innerHTML = `
                 <a href="${d.principal["link instagram"] || '#'}" target="_blank"><img src="https://cdn-icons-png.flaticon.com/512/174/174855.png"></a>
@@ -561,7 +560,7 @@
                 <a href="mailto:${d.principal.correo || ''}"><img src="https://cdn-icons-png.flaticon.com/512/732/732200.png"></a>
             `;
             
-            // ========== ACORDEONES DINÁMICOS desde Descripciones ==========
+            // ========== ACORDEONES DINÁMICOS ==========
             const acordeonesContainer = document.getElementById('acordeones-dinamicos');
             if (acordeonesContainer && d.informativoRaw) {
                 let acordeonesHtml = '';
@@ -576,6 +575,8 @@
                     }
                 }
                 acordeonesContainer.innerHTML = acordeonesHtml || '<p style="padding:20px; text-align:center">No hay información cargada.</p>';
+            } else {
+                console.warn("No se encontró 'acordeones-dinamicos' o 'informativoRaw'");
             }
             
             // ========== CANDIDATOS ==========
@@ -603,7 +604,8 @@
                     </div>
                 `;
             }).join('');
-            document.getElementById('secretarias-dinamicas').innerHTML = secretariasHtml || '<p>No hay secretarías cargadas.</p>';
+            const secretariasContainer = document.getElementById('secretarias-dinamicas');
+            if (secretariasContainer) secretariasContainer.innerHTML = secretariasHtml || '<p>No hay secretarías cargadas.</p>';
             
             // ========== PROPUESTAS ==========
             const prop = d.propuestas;
@@ -623,7 +625,8 @@
                     </div>
                 </div>
             `).join('');
-            document.getElementById('prop-lista').innerHTML = propHtml || '<p style="text-align:center; padding:20px;">No hay propuestas cargadas aún.</p>';
+            const propLista = document.getElementById('prop-lista');
+            if (propLista) propLista.innerHTML = propHtml || '<p style="text-align:center; padding:20px;">No hay propuestas cargadas aún.</p>';
             
             // ========== VIDEO INTRO ==========
             const vid = document.getElementById('intro-video');
@@ -636,7 +639,8 @@
             }
         } catch (e) { 
             console.error("Error cargando datos:", e);
-            document.getElementById('acordeones-dinamicos').innerHTML = '<p style="padding:20px; text-align:center">Error al cargar datos. Revisá la consola.</p>';
+            const acContainer = document.getElementById('acordeones-dinamicos');
+            if (acContainer) acContainer.innerHTML = '<p style="padding:20px; text-align:center">Error al cargar datos. Revisá la consola.</p>';
         }
     }
     
@@ -717,7 +721,6 @@
         welcome.style.opacity = '0';
         setTimeout(() => {
             welcome.style.display = 'none';
-            // Si el video no está completamente cargado, mostrar app directamente
             if (v.src && v.readyState >= 4) {
                 document.getElementById('intro-screen').style.display = 'flex';
                 setTimeout(() => { document.getElementById('intro-screen').style.opacity = '1'; }, 50);
