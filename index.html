@@ -158,7 +158,7 @@
             transform: translateY(0);
         }
         .acc-item.open .arrow-icon { transform: rotate(180deg); }
-        /* Secretarías */
+        /* Secretarías dentro del acordeón (mismos estilos) */
         .secretaria-accordion {
             display: flex;
             flex-direction: column;
@@ -412,29 +412,14 @@
             document.getElementById('link-whatsapp').href = d.principal["link se parte"] || "#";
             document.getElementById('link-instagram').href = d.principal["link instagram"] || "#";
 
-            // Redes sociales
+            // Redes sociales (agregamos teléfono)
+            const telefono = d.principal["link logo numero"] || "";
             document.getElementById('socials').innerHTML = `
                 <a href="${d.principal["link instagram"] || '#'}" target="_blank"><img src="https://cdn-icons-png.flaticon.com/512/174/174855.png"></a>
                 <a href="${d.principal["link se parte"] || '#'}" target="_blank"><img src="https://cdn-icons-png.flaticon.com/512/3670/3670051.png"></a>
+                <a href="tel:${telefono}"><img src="https://cdn-icons-png.flaticon.com/512/724/724664.png"></a>
                 <a href="mailto:${d.principal.correo || ''}"><img src="https://cdn-icons-png.flaticon.com/512/732/732200.png"></a>
             `;
-
-            // ----- ACORDEONES DINÁMICOS desde Descripciones -----
-            const contenedorAcc = document.getElementById('acordeones-dinamicos');
-            if (contenedorAcc && d.informativoRaw) {
-                let htmlAcc = '';
-                for (const [titulo, contenido] of Object.entries(d.informativoRaw)) {
-                    if (titulo && contenido) {
-                        htmlAcc += `
-                            <div class="acc-item" onclick="toggleAcc(this)">
-                                <div class="acc-header">${titulo} <span class="arrow-icon">▼</span></div>
-                                <div class="acc-content">${formatText(contenido)}</div>
-                            </div>
-                        `;
-                    }
-                }
-                contenedorAcc.innerHTML = htmlAcc || '<p style="padding:20px; text-align:center">No hay información cargada.</p>';
-            }
 
             // ----- CANDIDATOS (slider) -----
             autoridades = d.listaAutoridades;
@@ -443,26 +428,53 @@
             document.getElementById('sub-aut').innerText = d.portadaAut.desc;
             renderAuth();
 
-            // ----- SECRETARÍAS (acordeón interno) con género -----
-            const secretarias = autoridades.filter(c => c.cargo && (c.cargo.toLowerCase().includes('secretaría') || c.cargo.toLowerCase().includes('secretaria')));
-            const secretariasHtml = secretarias.map(sec => {
-                const textoBoton = sec.genero === "Femenino" ? "Ver candidata" : "Ver candidato";
-                return `
-                    <div class="sec-item" onclick="toggleSecItem(this, event, ${sec.id})">
-                        <div class="sec-title">
-                            <span>${sec.cargo}</span>
-                            <span>▼</span>
-                        </div>
-                        <div class="sec-desc">
-                            ${formatText(sec.descripcionSecretaria || 'Descripción en proceso...')}
-                            <br>
-                            <a href="javascript:void(0)" class="sec-cand-link" onclick="jumpToCandidate(${sec.id}); event.stopPropagation();">${textoBoton}</a>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-            const secContainer = document.getElementById('secretarias-dinamicas');
-            if (secContainer) secContainer.innerHTML = secretariasHtml || '<p>No hay secretarías cargadas.</p>';
+            // ----- ACORDEONES DINÁMICOS desde Descripciones (con caso especial para "Secretarías") -----
+            const contenedorAcc = document.getElementById('acordeones-dinamicos');
+            if (contenedorAcc && d.informativoRaw) {
+                let htmlAcc = '';
+                for (const [titulo, contenido] of Object.entries(d.informativoRaw)) {
+                    if (titulo && contenido) {
+                        // Caso especial: si el título es "Secretarías" (sin importar mayúsculas)
+                        if (titulo.toLowerCase().trim() === "secretarías") {
+                            // Generar lista de secretarías desde autoridades
+                            const secretarias = autoridades.filter(c => c.cargo && (c.cargo.toLowerCase().includes('secretaría') || c.cargo.toLowerCase().includes('secretaria')));
+                            const secretariasHtml = secretarias.map(sec => {
+                                const textoBoton = sec.genero === "Femenino" ? "Ver candidata" : "Ver candidato";
+                                return `
+                                    <div class="sec-item" onclick="toggleSecItem(this, event, ${sec.id})">
+                                        <div class="sec-title">
+                                            <span>${sec.cargo}</span>
+                                            <span>▼</span>
+                                        </div>
+                                        <div class="sec-desc">
+                                            ${formatText(sec.descripcionSecretaria || 'Descripción en proceso...')}
+                                            <br>
+                                            <a href="javascript:void(0)" class="sec-cand-link" onclick="jumpToCandidate(${sec.id}); event.stopPropagation();">${textoBoton}</a>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('');
+                            htmlAcc += `
+                                <div class="acc-item" onclick="toggleAcc(this)">
+                                    <div class="acc-header">${titulo} <span class="arrow-icon">▼</span></div>
+                                    <div class="acc-content">
+                                        <div class="secretaria-accordion">${secretariasHtml || '<p>No hay secretarías cargadas.</p>'}</div>
+                                    </div>
+                                </div>
+                            `;
+                        } else {
+                            // Acordeón normal
+                            htmlAcc += `
+                                <div class="acc-item" onclick="toggleAcc(this)">
+                                    <div class="acc-header">${titulo} <span class="arrow-icon">▼</span></div>
+                                    <div class="acc-content">${formatText(contenido)}</div>
+                                </div>
+                            `;
+                        }
+                    }
+                }
+                contenedorAcc.innerHTML = htmlAcc || '<p style="padding:20px; text-align:center">No hay información cargada.</p>';
+            }
 
             // ----- PROPUESTAS (acordeones desde hoja Propuestas) -----
             const prop = d.propuestas;
@@ -576,8 +588,7 @@
         welcome.style.opacity = '0';
         setTimeout(() => {
             welcome.style.display = 'none';
-            // Si el video tiene fuente y está al menos cargado para empezar a reproducirse (readyState >= 3) 
-            // o si ya tiene datos suficientes, se muestra; de lo contrario salta directo.
+            // Si el video tiene fuente y está al menos cargado para empezar a reproducirse (readyState >= 3)
             if (v.src && v.readyState >= 3) {
                 document.getElementById('intro-screen').style.display = 'flex';
                 setTimeout(() => { document.getElementById('intro-screen').style.opacity = '1'; }, 50);
